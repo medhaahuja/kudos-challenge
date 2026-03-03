@@ -43,7 +43,7 @@ jobs:
           fi
 
       - name: Send WhatsApp messages
-        run: node --input-type=module scripts/send-whatsapp.js ${{ steps.mode.outputs.mode }}
+        run: node scripts/send-whatsapp.js ${{ steps.mode.outputs.mode }}
         env:
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
           FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
