@@ -174,6 +174,7 @@ function LeaderboardPanel({ leaderboard, currentUserId }) {
             <span style={{ fontSize: 16, width: 28, textAlign: "center" }}>{medal}</span>
             <div style={{ flex: 1 }}><span style={{ fontSize: 14, fontWeight: 700, color: isMe ? "#FFD700" : "#fff" }}>{entry.name} {isMe ? "(You)" : ""}</span></div>
             <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+              <div style={{ textAlign: "center" }}><div style={{ fontSize: 16, fontWeight: 800, color: "rgba(255,255,255,0.6)" }}>{entry.active_days}</div><div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>Days</div></div>
               <div style={{ textAlign: "center" }}><div style={{ fontSize: 16, fontWeight: 800, color: "#00C9A7" }}>{entry.perfect_days}</div><div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>Perfect</div></div>
               {entry.current_streak > 0 && <div style={{ textAlign: "center" }}><div style={{ fontSize: 16, fontWeight: 800, color: "#FFD700" }}>🔥{entry.current_streak}</div><div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>Streak</div></div>}
             </div>
@@ -195,6 +196,7 @@ export default function ChallengeTracker() {
   const [showConfetti, setShowConfetti] = useState(false);
   const [animatingHabit, setAnimatingHabit] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [authError, setAuthError] = useState("");
   const prevPerfectRef = useRef(false);
 
@@ -221,6 +223,7 @@ export default function ChallengeTracker() {
             setStartDate(user.startDate || today);
             const allCheckins = await getAllCheckins(user.id);
             setCheckins(allCheckins);
+            if (allCheckins[today]) setSubmitted(true);
             prevPerfectRef.current = getDayScore(allCheckins[today] || {}) === 4;
             setScreen("dashboard");
             getLeaderboard().then(setLeaderboardData);
@@ -266,6 +269,7 @@ export default function ChallengeTracker() {
     const newScore = getDayScore(newTodayData);
     if (newScore === 4 && !prevPerfectRef.current) {
       setShowConfetti(true); setTimeout(() => setShowConfetti(false), 3000);
+      setSubmitted(true);
     }
     prevPerfectRef.current = newScore === 4;
     await upsertCheckin(userId, today, { wakeup: newTodayData.wakeup, water: newTodayData.water, workout: newTodayData.workout, steps: newTodayData.steps });
@@ -348,6 +352,15 @@ export default function ChallengeTracker() {
                 </button>);
               })}
             </div>
+            {!submitted && (
+              <button
+                onClick={() => setSubmitted(true)}
+                disabled={todayScore === 0}
+                style={{ ...styles.ctaButton, marginTop: 16, opacity: todayScore > 0 ? 1 : 0.4 }}
+              >
+                Submit Check-in ✓
+              </button>
+            )}
           </>) : (<>
             <div style={styles.scoreSection}>
               <CircularProgress percentage={todayPercentage} size={110} strokeWidth={10}><span style={{ fontSize: 28, fontWeight: 800, color: "#fff" }}>{todayScore}</span><span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>of 4</span></CircularProgress>
@@ -360,8 +373,10 @@ export default function ChallengeTracker() {
               </div>
             </div>
           </>)}
-          <h3 style={{ ...styles.sectionTitle, marginTop: 28 }}>21-Day Calendar</h3>
-          <div style={styles.calendarCard}><CalendarView checkins={checkins} startDate={effectiveStartDate} currentDay={currentDay} /></div>
+          {(submitted || todayScore >= 4) && (<>
+            <h3 style={{ ...styles.sectionTitle, marginTop: 28 }}>21-Day Calendar</h3>
+            <div style={styles.calendarCard}><CalendarView checkins={checkins} startDate={effectiveStartDate} currentDay={currentDay} /></div>
+          </>)}
         </>)}
 
         {activeTab === "leaderboard" && (<>
