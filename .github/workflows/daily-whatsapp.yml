@@ -1,0 +1,52 @@
+name: Daily WhatsApp Messages
+
+on:
+  schedule:
+    # Morning reminder: 8:00 AM IST = 2:30 AM UTC
+    - cron: "30 2 * * *"
+    # Evening recap: 9:00 PM IST = 3:30 PM UTC
+    - cron: "30 15 * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Message type"
+        required: true
+        default: "recap"
+        type: choice
+        options:
+          - reminder
+          - recap
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install firebase-admin
+
+      - name: Determine mode
+        id: mode
+        run: |
+          # workflow_dispatch overrides schedule
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "mode=${{ github.event.inputs.mode }}" >> $GITHUB_OUTPUT
+          elif [ "$(date -u +%H)" = "02" ]; then
+            echo "mode=reminder" >> $GITHUB_OUTPUT
+          else
+            echo "mode=recap" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send WhatsApp messages
+        run: node --input-type=module scripts/send-whatsapp.js ${{ steps.mode.outputs.mode }}
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+          FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+          META_WA_TOKEN: ${{ secrets.META_WA_TOKEN }}
+          META_WA_PHONE_ID: ${{ secrets.META_WA_PHONE_ID }}
