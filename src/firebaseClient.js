@@ -190,13 +190,15 @@ export async function getLeaderboard() {
         }
       }
 
-      leaderboard.push({
-        user_id: userDoc.id,
-        name: userData.name,
-        perfect_days: perfectDays,
-        active_days: activeDays,
-        current_streak: currentStreak,
-      });
+      if (activeDays > 0) {
+        leaderboard.push({
+          user_id: userDoc.id,
+          name: userData.name,
+          perfect_days: perfectDays,
+          active_days: activeDays,
+          current_streak: currentStreak,
+        });
+      }
     }
 
     leaderboard.sort((a, b) => b.perfect_days - a.perfect_days || b.current_streak - a.current_streak);
