@@ -247,7 +247,6 @@ export default function ChallengeTracker() {
       const user = await getOrCreateUser(trimmed);
       if (user?.id) {
         setUserId(user.id);
-        setStartDate(user.startDate || today);
         try { localStorage.setItem("kudos-user-id", user.id); } catch { /* ignore */ }
         setScreen("dashboard");
         getLeaderboard().then(setLeaderboardData);
@@ -331,7 +330,14 @@ export default function ChallengeTracker() {
         </div>
 
         {activeTab === "today" && (<>
-          {todayScore < 4 ? (<>
+          {today < CHALLENGE_START && (
+            <div style={{ background: "linear-gradient(135deg, rgba(0,201,167,0.15), rgba(99,102,241,0.15))", border: "1px solid rgba(0,201,167,0.3)", borderRadius: 16, padding: "20px 20px", marginBottom: 20, textAlign: "center" }}>
+              <div style={{ fontSize: 36, marginBottom: 8 }}>🚀</div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: "#fff", marginBottom: 6 }}>Challenge begins tomorrow!</div>
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)" }}>You're all set. Habit logging opens on<br /><span style={{ color: "#00C9A7", fontWeight: 700 }}>March 5, 2026</span>. See you then! 💪</div>
+            </div>
+          )}
+          {today < CHALLENGE_START ? null : todayScore < 4 ? (<>
             <div style={styles.quoteCard}><span style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", fontStyle: "italic" }}>"{quote}"</span></div>
             <h3 style={styles.sectionTitle}>Today's Habits</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
