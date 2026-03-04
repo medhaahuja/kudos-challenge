@@ -5,6 +5,7 @@ import {
 } from "./firebaseClient.js";
 
 const CHALLENGE_DAYS = 21;
+const CHALLENGE_START = "2026-03-05"; // global start date for everyone
 const WATER_BOTTLES = 3;
 const WATER_DONE_THRESHOLD = 2;
 
@@ -189,7 +190,6 @@ export default function ChallengeTracker() {
   const [screen, setScreen] = useState("loading");
   const [userName, setUserName] = useState("");
   const [userId, setUserId] = useState(null);
-  const [startDate, setStartDate] = useState(null);
   const [checkins, setCheckins] = useState({});
   const [leaderboard, setLeaderboardData] = useState([]);
   const [activeTab, setActiveTab] = useState("today");
@@ -202,7 +202,7 @@ export default function ChallengeTracker() {
 
   const _now = new Date();
   const today = `${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,'0')}-${String(_now.getDate()).padStart(2,'0')}`;
-  const effectiveStartDate = startDate || today;
+  const effectiveStartDate = CHALLENGE_START;
   const [sy, sm, sd] = effectiveStartDate.split("-").map(Number);
   const start = new Date(sy, sm - 1, sd);
   const now = new Date(_now.getFullYear(), _now.getMonth(), _now.getDate());
@@ -220,7 +220,6 @@ export default function ChallengeTracker() {
           const user = await getUser(savedId);
           if (user) {
             setUserId(user.id); setUserName(user.name);
-            setStartDate(user.startDate || today);
             const allCheckins = await getAllCheckins(user.id);
             setCheckins(allCheckins);
             if (allCheckins[today]) setSubmitted(true);
