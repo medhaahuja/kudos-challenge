@@ -398,22 +398,117 @@ export default function ChallengeTracker() {
   const overallProgress = (perfectDays / CHALLENGE_DAYS) * 100;
   const quote = MOTIVATIONAL_QUOTES[currentDay - 1] || MOTIVATIONAL_QUOTES[0];
 
-  const buildShareText = () => {
+  const generateShareCard = () => new Promise((resolve) => {
+    const S = 1080;
+    const canvas = document.createElement("canvas");
+    canvas.width = S; canvas.height = S;
+    const c = canvas.getContext("2d");
+
+    // Background gradient
+    const bg = c.createLinearGradient(0, 0, S, S);
+    bg.addColorStop(0, "#0D0D1A"); bg.addColorStop(0.5, "#1A1A2E"); bg.addColorStop(1, "#16213E");
+    c.fillStyle = bg; c.fillRect(0, 0, S, S);
+
+    // Decorative glow blobs
+    const g1 = c.createRadialGradient(S * 0.88, S * 0.08, 0, S * 0.88, S * 0.08, 380);
+    g1.addColorStop(0, "rgba(0,201,167,0.18)"); g1.addColorStop(1, "transparent");
+    c.fillStyle = g1; c.fillRect(0, 0, S, S);
+    const g2 = c.createRadialGradient(S * 0.08, S * 0.92, 0, S * 0.08, S * 0.92, 320);
+    g2.addColorStop(0, "rgba(255,107,53,0.14)"); g2.addColorStop(1, "transparent");
+    c.fillStyle = g2; c.fillRect(0, 0, S, S);
+
+    const font = (size, weight = "normal") => `${weight} ${size}px -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif`;
+    c.textAlign = "center";
+
+    // Header chip
+    const chipW = 360, chipH = 52, chipX = S / 2 - chipW / 2, chipY = 72;
+    c.beginPath(); c.roundRect(chipX, chipY, chipW, chipH, 26);
+    c.fillStyle = "rgba(0,201,167,0.12)"; c.fill();
+    c.strokeStyle = "rgba(0,201,167,0.35)"; c.lineWidth = 1.5; c.stroke();
+    c.font = font(26, "bold"); c.fillStyle = "#00C9A7";
+    c.fillText("KUDOS CHALLENGE", S / 2, chipY + 35);
+
+    // Day label
+    c.font = font(48); c.fillStyle = "rgba(255,255,255,0.4)";
+    c.fillText(`Day ${currentDay} of ${CHALLENGE_DAYS}`, S / 2, 190);
+
+    // Big score
     if (todayScore === 4) {
-      return `🔥 Day ${currentDay}/${CHALLENGE_DAYS} done — Kudos Challenge\n\n4/4 habits · ${streak} day streak · ${perfectDays} perfect days\n\nWho's joining me? 💪`;
+      c.font = font(260, "bold"); c.fillStyle = "#FFFFFF";
+      c.fillText("4", S / 2, 470);
+      c.font = font(52); c.fillStyle = "rgba(255,255,255,0.35)";
+      c.fillText("out of 4 habits", S / 2, 540);
+      const badgeW = 340, badgeH = 62, bx = S / 2 - badgeW / 2;
+      c.beginPath(); c.roundRect(bx, 562, badgeW, badgeH, 31);
+      c.fillStyle = "rgba(0,201,167,0.18)"; c.fill();
+      c.font = font(34, "bold"); c.fillStyle = "#00C9A7";
+      c.fillText("✦ Perfect Day", S / 2, 601);
+    } else {
+      c.font = font(220, "bold"); c.fillStyle = "#FFFFFF";
+      c.fillText(`${todayScore}`, S / 2, 450);
+      c.font = font(52); c.fillStyle = "rgba(255,255,255,0.35)";
+      c.fillText(`out of 4 habits`, S / 2, 525);
     }
-    return `📋 Day ${currentDay}/${CHALLENGE_DAYS} — Kudos Challenge\n\n${todayScore}/4 habits${streak > 0 ? ` · ${streak} day streak` : ""}\n\nShowing up daily 🙌`;
-  };
+
+    // Stats row
+    const sY = 720;
+    [
+      { val: String(streak), sub: "day streak", color: "#FFD700", x: S * 0.18 },
+      { val: String(perfectDays), sub: "perfect days", color: "#00C9A7", x: S * 0.5 },
+      { val: `${Math.round(overallProgress)}%`, sub: "complete", color: "#FF6B35", x: S * 0.82 },
+    ].forEach(({ val, sub, color, x }) => {
+      c.font = font(76, "bold"); c.fillStyle = color; c.fillText(val, x, sY);
+      c.font = font(30); c.fillStyle = "rgba(255,255,255,0.4)"; c.fillText(sub, x, sY + 46);
+    });
+
+    // Divider
+    c.beginPath(); c.moveTo(80, 810); c.lineTo(S - 80, 810);
+    c.strokeStyle = "rgba(255,255,255,0.07)"; c.lineWidth = 1.5; c.stroke();
+
+    // 21-day dot progress
+    const dotR = 15, gap = 12;
+    const totalW = CHALLENGE_DAYS * (dotR * 2 + gap) - gap;
+    let dx = (S - totalW) / 2 + dotR;
+    const dotY = 862;
+    for (let i = 0; i < CHALLENGE_DAYS; i++) {
+      const d = new Date(start); d.setDate(start.getDate() + i);
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+      const ds = getDayScore(checkins[key]);
+      c.beginPath(); c.arc(dx, dotY, dotR, 0, Math.PI * 2);
+      if (i + 1 > currentDay) c.fillStyle = "rgba(255,255,255,0.05)";
+      else if (ds === 4) c.fillStyle = "#00C9A7";
+      else if (ds >= 2) c.fillStyle = "#FFC75F";
+      else if (ds >= 1) c.fillStyle = "#FF9A5C";
+      else c.fillStyle = "rgba(255,255,255,0.15)";
+      c.fill();
+      dx += dotR * 2 + gap;
+    }
+
+    // Footer divider
+    c.beginPath(); c.moveTo(80, 920); c.lineTo(S - 80, 920);
+    c.strokeStyle = "rgba(255,255,255,0.07)"; c.lineWidth = 1.5; c.stroke();
+
+    // User name left
+    c.textAlign = "left"; c.font = font(46, "bold"); c.fillStyle = "#FFFFFF";
+    c.fillText(userName, 80, 990);
+    // Date right
+    c.textAlign = "right"; c.font = font(34); c.fillStyle = "rgba(255,255,255,0.35)";
+    c.fillText(today, S - 80, 990);
+
+    canvas.toBlob((blob) => resolve(blob), "image/png");
+  });
 
   const handleShare = async () => {
-    const text = buildShareText();
-    if (navigator.share) {
-      try { await navigator.share({ text }); } catch (err) {
-        if (err.name !== "AbortError") window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
-      }
-    } else {
-      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+    const blob = await generateShareCard();
+    const file = new File([blob], "kudos-progress.png", { type: "image/png" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file] }); return; } catch (err) { if (err.name === "AbortError") return; }
     }
+    // Fallback: download the image
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = "kudos-progress.png";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const selectedDayNumber = selectedDate
