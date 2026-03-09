@@ -40,6 +40,8 @@ const MOTIVATIONAL_QUOTES = [
   "21 days. That's all it takes to change everything.",
 ];
 
+const EMPTY_DAY = { wakeup: false, water: 0, workout: false, steps: false };
+
 
 function ConfettiEffect({ active }) {
   if (!active) return null;
@@ -127,7 +129,7 @@ function WaterBottleTracker({ bottlesFilled, onChange }) {
   );
 }
 
-function CalendarView({ checkins, startDate, currentDay }) {
+function CalendarView({ checkins, startDate, currentDay, selectedDate, onSelectDate }) {
   const weeks = []; let week = [];
   const [_sy, _sm, _sd] = startDate.split("-").map(Number);
   const start = new Date(_sy, _sm - 1, _sd);
@@ -137,7 +139,7 @@ function CalendarView({ checkins, startDate, currentDay }) {
     const key = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`; const c = checkins[key];
     let score = 0;
     if (c) { if (c.wakeup) score++; if (c.water >= WATER_DONE_THRESHOLD) score++; if (c.workout) score++; if (c.steps) score++; }
-    week.push({ day: d + 1, score, isToday: d + 1 === currentDay, isFuture: d + 1 > currentDay });
+    week.push({ day: d + 1, date: key, score, isToday: d + 1 === currentDay, isFuture: d + 1 > currentDay });
     if (week.length === 7) { weeks.push(week); week = []; }
   }
   if (week.length) { while (week.length < 7) week.push(null); weeks.push(week); }
@@ -148,16 +150,99 @@ function CalendarView({ checkins, startDate, currentDay }) {
         {["S","M","T","W","T","F","S"].map((d, i) => (<div key={i} style={{ textAlign: "center", fontSize: 11, color: "rgba(255,255,255,0.3)", fontWeight: 600 }}>{d}</div>))}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6 }}>
-        {weeks.flat().map((cell, i) => (
-          <div key={i} style={{ aspectRatio: "1", borderRadius: 10, background: cell ? getColor(cell.score, cell.isFuture) : "transparent", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 600, color: cell?.isFuture ? "rgba(255,255,255,0.15)" : cell?.score > 0 ? "#fff" : "rgba(255,255,255,0.4)", border: cell?.isToday ? "2px solid #FFD700" : "2px solid transparent" }}>
-            {cell && (<><span>{cell.day}</span>{!cell.isFuture && cell.score > 0 && <span style={{ fontSize: 8, marginTop: 1 }}>{"●".repeat(cell.score)}</span>}</>)}
-          </div>
-        ))}
+        {weeks.flat().map((cell, i) => {
+          const canSelect = !!cell && !cell.isFuture;
+          const isSelected = !!cell?.date && cell.date === selectedDate;
+          return (
+            <button
+              key={i}
+              type="button"
+              onClick={() => (canSelect ? onSelectDate?.(cell.date) : null)}
+              disabled={!canSelect}
+              style={{
+                aspectRatio: "1",
+                borderRadius: 10,
+                background: cell ? getColor(cell.score, cell.isFuture) : "transparent",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 13,
+                fontWeight: 600,
+                color: cell?.isFuture ? "rgba(255,255,255,0.15)" : cell?.score > 0 ? "#fff" : "rgba(255,255,255,0.4)",
+                border: isSelected ? "2px solid rgba(255,255,255,0.85)" : cell?.isToday ? "2px solid #FFD700" : "2px solid transparent",
+                cursor: canSelect ? "pointer" : "default",
+                padding: 0,
+                outline: "none",
+              }}
+            >
+              {cell && (
+                <>
+                  <span>{cell.day}</span>
+                  {!cell.isFuture && cell.score > 0 && <span style={{ fontSize: 8, marginTop: 1 }}>{"●".repeat(cell.score)}</span>}
+                </>
+              )}
+            </button>
+          );
+        })}
       </div>
       <div style={{ display: "flex", gap: 16, marginTop: 12, justifyContent: "center", flexWrap: "wrap" }}>
         {[{ color: "#00C9A7", label: "All 4" }, { color: "#FFC75F", label: "2-3" }, { color: "#FF9A5C", label: "1" }, { color: "rgba(255,255,255,0.06)", label: "None" }].map((l) => (
           <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "rgba(255,255,255,0.5)" }}><div style={{ width: 10, height: 10, borderRadius: 3, background: l.color }} />{l.label}</div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function DayEditModal({ dateKey, dayNumber, draft, isDirty, saving, onChange, onSave, onClose }) {
+  const [animating, setAnimating] = useState(null);
+  return (
+    <div
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ position: "fixed", inset: 0, zIndex: 1000, display: "flex", flexDirection: "column", justifyContent: "flex-end", background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)" }}
+    >
+      <div style={{ background: "#1A1A2E", borderRadius: "24px 24px 0 0", padding: "24px 20px 40px", maxHeight: "88vh", overflowY: "auto", border: "1px solid rgba(255,255,255,0.08)", animation: "slideUp 0.3s ease" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "#fff" }}>Day {dayNumber}</div>
+            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>{dateKey}</div>
+          </div>
+          <button onClick={onClose} style={{ background: "rgba(255,255,255,0.06)", border: "none", borderRadius: 10, width: 36, height: 36, color: "rgba(255,255,255,0.6)", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
+          {HABITS.map((habit) => {
+            if (habit.type === "water") {
+              return (
+                <div key={habit.id} style={{ padding: "14px 16px", borderRadius: 14, background: "rgba(255,255,255,0.03)", border: `1px solid ${draft.water >= WATER_DONE_THRESHOLD ? "rgba(0,201,167,0.3)" : "rgba(255,255,255,0.06)"}`, boxSizing: "border-box" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+                    <span style={{ fontSize: 24 }}>{habit.icon}</span>
+                    <div style={{ flex: 1 }}><div style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>{habit.label}</div><div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>{habit.description}</div></div>
+                    {draft.water >= WATER_DONE_THRESHOLD && <span style={{ fontSize: 20 }}>✅</span>}
+                  </div>
+                  <WaterBottleTracker bottlesFilled={draft.water || 0} onChange={(b) => onChange("water", b)} />
+                </div>
+              );
+            }
+            const isChecked = !!draft[habit.id];
+            const isAnim = animating === habit.id;
+            return (
+              <button key={habit.id} type="button"
+                onClick={() => { setAnimating(habit.id); setTimeout(() => setAnimating(null), 300); onChange(habit.id, !isChecked); }}
+                style={{ padding: "14px 16px", borderRadius: 14, background: "rgba(255,255,255,0.03)", border: `1px solid ${isChecked ? "rgba(0,201,167,0.3)" : "rgba(255,255,255,0.06)"}`, width: "100%", textAlign: "left", boxSizing: "border-box", cursor: "pointer", transform: isAnim ? "scale(0.97)" : "scale(1)", transition: "all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <span style={{ fontSize: 24 }}>{habit.icon}</span>
+                  <div style={{ textAlign: "left" }}><div style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>{habit.label}</div><div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>{habit.description}</div></div>
+                  <div style={{ marginLeft: "auto", width: 28, height: 28, borderRadius: 8, background: isChecked ? "#00C9A7" : "rgba(255,255,255,0.06)", border: isChecked ? "none" : "2px solid rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, color: "#fff" }}>{isChecked ? "✓" : ""}</div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        <button type="button" onClick={onSave} disabled={!isDirty || saving}
+          style={{ width: "100%", padding: "14px", fontSize: 16, fontWeight: 700, borderRadius: 12, border: "none", cursor: isDirty && !saving ? "pointer" : "default", color: "#0D0D1A", background: "linear-gradient(135deg, #FFD700, #FF6B35)", fontFamily: "'DM Sans', sans-serif", opacity: isDirty && !saving ? 1 : 0.4, transition: "all 0.3s ease" }}>
+          {saving ? "Saving..." : "Save Check-in ✓"}
+        </button>
       </div>
     </div>
   );
@@ -198,6 +283,9 @@ export default function ChallengeTracker() {
   const [saving, setSaving] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [authError, setAuthError] = useState("");
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [editDraft, setEditDraft] = useState(EMPTY_DAY);
+  const [editDirty, setEditDirty] = useState(false);
   const prevPerfectRef = useRef(false);
 
   const _now = new Date();
@@ -274,6 +362,34 @@ export default function ChallengeTracker() {
     if (newScore === 4) getLeaderboard().then(setLeaderboardData);
   };
 
+  const handleSelectDate = (dateKey) => {
+    setSelectedDate(dateKey);
+    setEditDraft(checkins[dateKey] || EMPTY_DAY);
+    setEditDirty(false);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedDate || !userId) return;
+    setSaving(true);
+    try {
+      const payload = {
+        wakeup: !!editDraft.wakeup,
+        water: Number(editDraft.water) || 0,
+        workout: !!editDraft.workout,
+        steps: !!editDraft.steps,
+      };
+      setCheckins((prev) => ({ ...prev, [selectedDate]: payload }));
+      await upsertCheckin(userId, selectedDate, payload);
+      setEditDirty(false);
+      if (selectedDate === today) setSubmitted(true);
+      setSelectedDate(null);
+      getLeaderboard().then(setLeaderboardData);
+    } catch (e) {
+      console.error(e);
+    }
+    setSaving(false);
+  };
+
   const todayScore = getDayScore(todayData);
   const todayPercentage = (todayScore / 4) * 100;
   const getStreak = () => { let s = 0; for (let d = currentDay - 1; d >= 0; d--) { const date = new Date(start); date.setDate(start.getDate() + d); const key = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`; if (getDayScore(checkins[key]) === 4) s++; else break; } return s; };
@@ -281,6 +397,18 @@ export default function ChallengeTracker() {
   const streak = getStreak(); const perfectDays = getPerfectDays();
   const overallProgress = (perfectDays / CHALLENGE_DAYS) * 100;
   const quote = MOTIVATIONAL_QUOTES[currentDay - 1] || MOTIVATIONAL_QUOTES[0];
+
+  const selectedDayNumber = selectedDate
+    ? Math.min(
+        Math.max(
+          Math.floor(
+            (new Date(selectedDate) - start) / (1000 * 60 * 60 * 24)
+          ) + 1,
+          1
+        ),
+        CHALLENGE_DAYS
+      )
+    : null;
 
   if (screen === "loading") return (<div style={styles.container}><style>{keyframes}</style><div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}><div style={{ fontSize: 40, animation: "pulse 1.5s infinite" }}>🔥</div></div></div>);
 
@@ -316,6 +444,18 @@ export default function ChallengeTracker() {
   return (
     <div style={styles.container}><style>{keyframes}</style>
       <ConfettiEffect active={showConfetti} />
+      {selectedDate && (
+        <DayEditModal
+          dateKey={selectedDate}
+          dayNumber={selectedDayNumber}
+          draft={editDraft}
+          isDirty={editDirty}
+          saving={saving}
+          onChange={(habitId, value) => { setEditDraft((prev) => ({ ...prev, [habitId]: value })); setEditDirty(true); }}
+          onSave={handleSaveEdit}
+          onClose={() => setSelectedDate(null)}
+        />
+      )}
       <div style={styles.dashboard}>
         <div style={styles.header}>
           <div><h1 style={styles.greeting}>Hey {userName} 👋</h1><p style={styles.dayLabel}>Day {currentDay} of {CHALLENGE_DAYS}</p></div>
@@ -378,9 +518,12 @@ export default function ChallengeTracker() {
               </div>
             </div>
           </>)}
-          {(submitted || todayScore >= 4) && (<>
+          {today >= CHALLENGE_START && (<>
             <h3 style={{ ...styles.sectionTitle, marginTop: 28 }}>21-Day Calendar</h3>
-            <div style={styles.calendarCard}><CalendarView checkins={checkins} startDate={effectiveStartDate} currentDay={currentDay} /></div>
+            <div style={styles.calendarCard}>
+              <CalendarView checkins={checkins} startDate={effectiveStartDate} currentDay={currentDay} selectedDate={selectedDate} onSelectDate={handleSelectDate} />
+              <div style={{ marginTop: 10, fontSize: 12, color: "rgba(255,255,255,0.3)", textAlign: "center" }}>Tap any past day to view or edit check-in</div>
+            </div>
           </>)}
         </>)}
 
