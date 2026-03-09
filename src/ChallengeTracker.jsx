@@ -286,6 +286,7 @@ export default function ChallengeTracker() {
   const [selectedDate, setSelectedDate] = useState(null);
   const [editDraft, setEditDraft] = useState(EMPTY_DAY);
   const [editDirty, setEditDirty] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
   const prevPerfectRef = useRef(false);
 
   const _now = new Date();
@@ -398,6 +399,35 @@ export default function ChallengeTracker() {
   const overallProgress = (perfectDays / CHALLENGE_DAYS) * 100;
   const quote = MOTIVATIONAL_QUOTES[currentDay - 1] || MOTIVATIONAL_QUOTES[0];
 
+  const buildShareText = () => {
+    if (todayScore === 4) {
+      return `🔥 Day ${currentDay}/${CHALLENGE_DAYS} done — Kudos Challenge\n\n4/4 habits · ${streak} day streak · ${perfectDays} perfect days\n\nWho's joining me? 💪`;
+    }
+    return `📋 Day ${currentDay}/${CHALLENGE_DAYS} — Kudos Challenge\n\n${todayScore}/4 habits${streak > 0 ? ` · ${streak} day streak` : ""}\n\nShowing up daily 🙌`;
+  };
+
+  const copyToClipboard = async (text) => {
+    try { await navigator.clipboard.writeText(text); }
+    catch {
+      const el = document.createElement("textarea");
+      el.value = text; el.style.cssText = "position:fixed;opacity:0";
+      document.body.appendChild(el); el.focus(); el.select();
+      document.execCommand("copy"); document.body.removeChild(el);
+    }
+    setShareCopied(true);
+    setTimeout(() => setShareCopied(false), 2500);
+  };
+
+  const handleShare = async () => {
+    const text = buildShareText();
+    if (navigator.share) {
+      try { await navigator.share({ text }); }
+      catch (err) { if (err.name !== "AbortError") await copyToClipboard(text); }
+    } else {
+      await copyToClipboard(text);
+    }
+  };
+
   const selectedDayNumber = selectedDate
     ? Math.min(
         Math.max(
@@ -506,6 +536,11 @@ export default function ChallengeTracker() {
                 Submit Check-in ✓
               </button>
             )}
+            {submitted && (
+              <button onClick={handleShare} style={{ width: "100%", padding: "13px", fontSize: 15, fontWeight: 700, borderRadius: 12, border: "1.5px solid rgba(0,201,167,0.45)", cursor: "pointer", color: shareCopied ? "#fff" : "#00C9A7", background: shareCopied ? "rgba(0,201,167,0.2)" : "rgba(0,201,167,0.07)", fontFamily: "'DM Sans', sans-serif", transition: "all 0.3s ease", marginTop: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                {shareCopied ? "✅ Copied!" : "📤 Share Today's Progress"}
+              </button>
+            )}
           </>) : (<>
             <div style={styles.scoreSection}>
               <CircularProgress percentage={todayPercentage} size={110} strokeWidth={10}><span style={{ fontSize: 28, fontWeight: 800, color: "#fff" }}>{todayScore}</span><span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>of 4</span></CircularProgress>
@@ -517,6 +552,9 @@ export default function ChallengeTracker() {
                 </div>
               </div>
             </div>
+            <button onClick={handleShare} style={{ width: "100%", padding: "13px", fontSize: 15, fontWeight: 700, borderRadius: 12, border: "1.5px solid rgba(0,201,167,0.45)", cursor: "pointer", color: shareCopied ? "#fff" : "#00C9A7", background: shareCopied ? "rgba(0,201,167,0.2)" : "rgba(0,201,167,0.07)", fontFamily: "'DM Sans', sans-serif", transition: "all 0.3s ease", marginTop: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              {shareCopied ? "✅ Copied!" : "📤 Share My Progress"}
+            </button>
           </>)}
           {today >= CHALLENGE_START && (<>
             <h3 style={{ ...styles.sectionTitle, marginTop: 28 }}>21-Day Calendar</h3>
