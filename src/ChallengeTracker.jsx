@@ -498,17 +498,19 @@ export default function ChallengeTracker() {
     canvas.toBlob((blob) => resolve(blob), "image/png");
   });
 
+  const buildShareText = () => {
+    if (todayScore === 4) return `🔥 Day ${currentDay}/${CHALLENGE_DAYS} done — Kudos Challenge\n\n4/4 habits · ${streak} day streak · ${perfectDays} perfect days\n\nWho's joining me? 💪`;
+    return `📋 Day ${currentDay}/${CHALLENGE_DAYS} — Kudos Challenge\n\n${todayScore}/4 habits${streak > 0 ? ` · ${streak} day streak` : ""}\n\nShowing up daily 🙌`;
+  };
+
   const handleShare = async () => {
     const blob = await generateShareCard();
     const file = new File([blob], "kudos-progress.png", { type: "image/png" });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try { await navigator.share({ files: [file] }); return; } catch (err) { if (err.name === "AbortError") return; }
     }
-    // Fallback: download the image
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = "kudos-progress.png";
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    // Fallback: open WhatsApp Web with text
+    window.open(`https://wa.me/?text=${encodeURIComponent(buildShareText())}`, "_blank");
   };
 
   const selectedDayNumber = selectedDate
