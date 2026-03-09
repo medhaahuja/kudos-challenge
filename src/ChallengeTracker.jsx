@@ -286,7 +286,6 @@ export default function ChallengeTracker() {
   const [selectedDate, setSelectedDate] = useState(null);
   const [editDraft, setEditDraft] = useState(EMPTY_DAY);
   const [editDirty, setEditDirty] = useState(false);
-  const [shareCopied, setShareCopied] = useState(false);
   const prevPerfectRef = useRef(false);
 
   const _now = new Date();
@@ -406,25 +405,14 @@ export default function ChallengeTracker() {
     return `📋 Day ${currentDay}/${CHALLENGE_DAYS} — Kudos Challenge\n\n${todayScore}/4 habits${streak > 0 ? ` · ${streak} day streak` : ""}\n\nShowing up daily 🙌`;
   };
 
-  const copyToClipboard = async (text) => {
-    try { await navigator.clipboard.writeText(text); }
-    catch {
-      const el = document.createElement("textarea");
-      el.value = text; el.style.cssText = "position:fixed;opacity:0";
-      document.body.appendChild(el); el.focus(); el.select();
-      document.execCommand("copy"); document.body.removeChild(el);
-    }
-    setShareCopied(true);
-    setTimeout(() => setShareCopied(false), 2500);
-  };
-
   const handleShare = async () => {
     const text = buildShareText();
     if (navigator.share) {
-      try { await navigator.share({ text }); }
-      catch (err) { if (err.name !== "AbortError") await copyToClipboard(text); }
+      try { await navigator.share({ text }); } catch (err) {
+        if (err.name !== "AbortError") window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+      }
     } else {
-      await copyToClipboard(text);
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
     }
   };
 
@@ -537,8 +525,8 @@ export default function ChallengeTracker() {
               </button>
             )}
             {submitted && (
-              <button onClick={handleShare} style={{ width: "100%", padding: "13px", fontSize: 15, fontWeight: 700, borderRadius: 12, border: "1.5px solid rgba(0,201,167,0.45)", cursor: "pointer", color: shareCopied ? "#fff" : "#00C9A7", background: shareCopied ? "rgba(0,201,167,0.2)" : "rgba(0,201,167,0.07)", fontFamily: "'DM Sans', sans-serif", transition: "all 0.3s ease", marginTop: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                {shareCopied ? "✅ Copied!" : "📤 Share Today's Progress"}
+              <button onClick={handleShare} style={{ width: "100%", padding: "13px", fontSize: 15, fontWeight: 700, borderRadius: 12, border: "1.5px solid rgba(0,201,167,0.45)", cursor: "pointer", color: "#00C9A7", background: "rgba(0,201,167,0.07)", fontFamily: "'DM Sans', sans-serif", transition: "all 0.3s ease", marginTop: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                {"📤 Share Today's Progress"}
               </button>
             )}
           </>) : (<>
@@ -552,8 +540,8 @@ export default function ChallengeTracker() {
                 </div>
               </div>
             </div>
-            <button onClick={handleShare} style={{ width: "100%", padding: "13px", fontSize: 15, fontWeight: 700, borderRadius: 12, border: "1.5px solid rgba(0,201,167,0.45)", cursor: "pointer", color: shareCopied ? "#fff" : "#00C9A7", background: shareCopied ? "rgba(0,201,167,0.2)" : "rgba(0,201,167,0.07)", fontFamily: "'DM Sans', sans-serif", transition: "all 0.3s ease", marginTop: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-              {shareCopied ? "✅ Copied!" : "📤 Share My Progress"}
+            <button onClick={handleShare} style={{ width: "100%", padding: "13px", fontSize: 15, fontWeight: 700, borderRadius: 12, border: "1.5px solid rgba(0,201,167,0.45)", cursor: "pointer", color: "#00C9A7", background: "rgba(0,201,167,0.07)", fontFamily: "'DM Sans', sans-serif", transition: "all 0.3s ease", marginTop: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              {"📤 Share My Progress"}
             </button>
           </>)}
           {today >= CHALLENGE_START && (<>
